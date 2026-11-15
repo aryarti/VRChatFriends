@@ -1,0 +1,8 @@
+singleton Theme 1.0 Theme.qml
+AppButton 1.0 components/AppButton.qml
+TextField 1.0 components/TextField.qml
+FriendRow 1.0 components/FriendRow.qml
+IconButton 1.0 components/IconButton.qml
+SidePanel 1.0 components/SidePanel.qml
+FriendPopup 1.0 components/FriendPopup.qml
+TitleBar 1.0 components/TitleBar.qml

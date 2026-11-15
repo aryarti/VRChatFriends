@@ -1,0 +1,20 @@
+# ambiente e build
+.venv/
+build/
+dist/
+*.spec.bak
+__pycache__/
+*.py[cod]
+
+# dados locais (sessao/cache ficam em %LOCALAPPDATA%, nunca aqui)
+settings.json
+session.json
+worlds.json
+app.log
+*.log
+
+# capturas/ensaios locais
+preview/
+docs/*.tmp
+.DS_Store
+Thumbs.db
