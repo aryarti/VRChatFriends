@@ -67,6 +67,28 @@ QtObject {
     readonly property color statusAsk: "#E8B04B"
     readonly property color statusBusy: "#FF7B72"
     readonly property color statusOffline: text2
+    readonly property int statusDotSize: 10     // bolinha de status sob o avatar recolhido
+    readonly property int statusDotRing: 2      // anel que separa a bolinha do avatar
+
+    // Cabeçalho da lista: coluna ativa (seta ▲/▼ só nela)
+    readonly property color headerHover: text2
+    readonly property color headerActive: text1
+
+    // Estrela de favorito (linha e cartão do amigo)
+    readonly property int starSize: 16
+    readonly property color starOn: accent
+    readonly property color starOff: text3
+    readonly property color favoritoBorder: accent
+    readonly property real offlineOpacity: 0.55   // favorito fora do ar, "apagado"
+
+    // Aviso "amigo entrou": janela própria no canto da tela
+    readonly property int toastWidth: 360          // parecido com o toast da Steam
+    readonly property int toastMs: 5000           // tempo na tela (pausa com o mouse em cima)
+    readonly property int toastMax: 3             // cartões empilhados no máximo
+    readonly property int toastMargin: 0          // espelho de posicionar_aviso() no main.py
+    readonly property color toastBg: "#15171B"
+    readonly property color toastFavoritoBg: "#261C4F"   // accent escurecido
+    readonly property color toastBorder: Qt.rgba(1, 1, 1, 0.08)
 
     // Gradiente do cabeçalho (o único da tela, permitido pela skill)
     readonly property color headerGradientStart: "#1A1530"
@@ -89,10 +111,11 @@ QtObject {
     readonly property int rowHeight: 40
     readonly property int avatarSize: 28
     readonly property int dotSize: 8
+    readonly property real dotWebRing: 1.5   // bolinha vazada de quem está só na web
     readonly property int listPad: 8          // respiro à esquerda da linha
     readonly property int colStatus: 198      // x do dot de status
     readonly property int colWorld: 302       // x do texto do mundo
-    readonly property int headHeight: 28
+    readonly property int headHeight: 32      // alvo clicável do header (>= 32 px)
     readonly property int btnHeight: 40
     readonly property int fieldHeight: 40
     readonly property int winWidth: 560

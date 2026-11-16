@@ -3,14 +3,21 @@ import ".."
 
 // Uma linha da lista: avatar redondo, nome, status (dot + rótulo) e mundo.
 // A cor vive só no dot e no rótulo do status — nunca na linha inteira.
+// Favorito ganha estrela e contorno na cor de destaque; favorito fora do ar
+// (bloco do fim) vem apagado, com "visto há X" no lugar do mundo.
 Item {
     id: root
 
     property var row: ({})
     property bool selected: false
+    property bool favorito: !!(row && row.favorito)
+    property bool offline: !!(row && row.offline)
+    // só na web (sem cliente aberto): a bolinha de status é vazada, não cheia
+    property bool naWeb: !!(row && row.web)
 
     signal clicked()
     signal rightClicked()
+    signal starClicked()
 
     height: Theme.rowHeight
 
@@ -18,6 +25,19 @@ Item {
         anchors.fill: parent
         color: root.selected || mouse.containsMouse ? Theme.bg3 : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.durFast } }
+    }
+
+    // contorno do favorito: fica por cima do fundo de hover e embaixo do conteúdo
+    Rectangle {
+        id: contorno
+        objectName: "contornoFavorito"
+        visible: root.favorito
+        anchors.fill: parent
+        anchors.margins: 2
+        radius: Theme.rSm
+        color: "transparent"
+        border.width: 1
+        border.color: Theme.favoritoBorder
     }
 
     // barra de seleção
@@ -49,6 +69,7 @@ Item {
         sourceSize.height: Theme.avatarSize * 2
         fillMode: Image.PreserveAspectFit
         smooth: true
+        opacity: root.offline ? Theme.offlineOpacity : 1
         visible: source.toString() !== ""
     }
 
@@ -61,6 +82,7 @@ Item {
         color: Theme.bg2
         border.width: 1
         border.color: Theme.border
+        opacity: root.offline ? Theme.offlineOpacity : 1
         anchors {
             left: parent.left
             leftMargin: Theme.listPad
@@ -78,11 +100,12 @@ Item {
     Text {
         id: nameLabel
         text: root.row && root.row.name ? root.row.name : ""
-        color: Theme.text1
+        color: root.offline ? Theme.text2 : Theme.text1
         font.family: Theme.fontFamily
         font.pixelSize: Theme.fsMd
         font.weight: 600
         elide: Text.ElideRight
+        opacity: root.offline ? Theme.offlineOpacity : 1
         anchors {
             left: avatar.right
             leftMargin: Theme.s3
@@ -94,10 +117,20 @@ Item {
 
     Rectangle {
         id: statusDot
+        objectName: "statusDotLinha"
+        // Vazada = está só na web: sem preenchimento, só o anel. Cheia = abriu
+        // o jogo/cliente. As três properties existem para o teste poder ler o
+        // que é desenhado (border é um QQuickPen, o Python não alcança).
+        property bool vazada: root.naWeb
+        property real anel: vazada ? Theme.dotWebRing : 0
+        property color corAnel: Theme.statusColor(root.row ? root.row.status : "")
         width: Theme.dotSize
         height: Theme.dotSize
         radius: width / 2
-        color: Theme.statusColor(root.row ? root.row.status : "")
+        color: vazada ? "transparent" : corAnel
+        border.width: anel
+        border.color: corAnel
+        opacity: root.offline ? Theme.offlineOpacity : 1
         anchors {
             verticalCenter: parent.verticalCenter
             left: parent.left
@@ -111,6 +144,7 @@ Item {
         color: Theme.statusColor(root.row ? root.row.status : "")
         font.family: Theme.fontFamily
         font.pixelSize: Theme.fsSm
+        opacity: root.offline ? Theme.offlineOpacity : 1
         anchors {
             left: statusDot.right
             leftMargin: Theme.s2
@@ -120,24 +154,47 @@ Item {
 
     Text {
         id: worldLabel
-        // instância pública: quantidade de gente no mesmo mundo, em tom mais discreto
+        // instância pública: quantidade de gente no mesmo mundo, em tom mais discreto.
+        // Favorito fora do ar não tem mundo: mostra há quanto tempo foi visto.
         text: {
+            if (root.offline) {
+                var quando = root.row ? (root.row.active || "") : "";
+                return quando ? ("visto há " + quando) : "";
+            }
             var w = root.row && root.row.world ? root.row.world : "";
             var rotulo = root.row ? (root.row.occupants_label || "") : "";
             return rotulo ? (w + " <font color='" + Theme.text3 + "'>· " + rotulo + "</font>") : w;
         }
         textFormat: Text.StyledText
-        color: Theme.text2
+        color: root.offline ? Theme.text3 : Theme.text2
         font.family: Theme.fontFamily
         font.pixelSize: Theme.fsMd
         elide: Text.ElideRight
+        opacity: root.offline ? Theme.offlineOpacity : 1
         anchors {
             left: parent.left
             leftMargin: Theme.colWorld
             right: parent.right
+            rightMargin: Theme.s3 + Theme.starSize + Theme.s2
+            verticalCenter: parent.verticalCenter
+        }
+    }
+
+    // ---- estrela de favorito (fora do bloco apagado: a estrela fica sempre nítida)
+    Text {
+        id: estrela
+        objectName: "estrela"
+        text: root.favorito ? "★" : "☆"
+        color: root.favorito ? Theme.starOn
+                             : (estrelaArea.containsMouse ? Theme.text2 : Theme.starOff)
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.starSize
+        anchors {
+            right: parent.right
             rightMargin: Theme.s3
             verticalCenter: parent.verticalCenter
         }
+        Behavior on color { ColorAnimation { duration: Theme.durFast } }
     }
 
     MouseArea {
@@ -152,5 +209,19 @@ Item {
             else
                 root.clicked();
         }
+    }
+
+    // por cima do MouseArea da linha: clicar na estrela não abre o perfil
+    MouseArea {
+        id: estrelaArea
+        objectName: "cliqueEstrela"
+        width: Theme.starSize + 16
+        height: Math.min(parent.height, 32)
+        anchors.right: estrela.right
+        anchors.rightMargin: -8
+        anchors.verticalCenter: parent.verticalCenter
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.starClicked()
     }
 }

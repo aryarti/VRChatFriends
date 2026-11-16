@@ -50,6 +50,15 @@ class Friend:
         """('Online', 'Furry Hangout · público · JP') — o que a linha mostra."""
         return self.status_label, self.world or "—"
 
+    @property
+    def on_web(self):
+        """Logado só no site, sem cliente aberto.
+
+        É o que a linha desenha como bolinha VAZADA (anel) em vez de cheia: o
+        preenchimento diz "está num cliente/jogo", o anel diz "só na web".
+        """
+        return (self.platform or "").strip().lower() == "web"
+
     def as_dict(self):
         """Para quem prefere dict (QML, JSON, log)."""
         return {
@@ -59,6 +68,7 @@ class Friend:
             "status_label": self.status_label,
             "world": self.world,
             "platform": self.platform,
+            "web": self.on_web,
             "location": self.location,
             "active": self.active,
             "avatar": self.avatar,

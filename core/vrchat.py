@@ -4,14 +4,41 @@
 import base64
 import os
 import sys
+import threading
 import time
 import urllib.parse
 
 import requests
 
-from .formatting import TYPE_ENDPOINTS
+from .formatting import STATUS_DESCRIPTION_MAX, TYPE_ENDPOINTS
 from .paths import API, AVATARS_DIR, SESSION_FILE, UA, WORLD_CACHE
 from .store import load_json, save_json
+
+# quantas vezes uma requisicao e repetida antes de virar erro para a UI
+TENTATIVAS = 3
+# tempo (s) entre tentativas quando a conexao morreu
+ESPERA_RECONEXAO = 0.6
+# teto de espera depois de um 429: bloquear o worker por 20 s deixava o app
+# "atualizando" sem fazer nada, e a rajada seguinte batia no limite de novo
+ESPERA_LIMITE_MAX = 8.0
+
+
+def espera_limite(resp):
+    """Segundos a esperar depois de um 429.
+
+    `X-RateLimit-Reset` do VRChat e um timestamp unix (nao um intervalo): se vier
+    no futuro, espera o que falta; se vier ausente ou estranho, 3 s. Nunca mais
+    que ESPERA_LIMITE_MAX — quem espera mais que isso e a proxima atualizacao.
+    """
+    bruto = (resp.headers.get("X-RateLimit-Reset") or "").strip()
+    if bruto:
+        try:
+            falta = float(bruto) - time.time()
+        except (TypeError, ValueError):
+            falta = 0.0
+        if falta > 0:
+            return max(2.0, min(falta, ESPERA_LIMITE_MAX))
+    return 3.0
 
 
 class VRChatClient:
@@ -26,6 +53,11 @@ class VRChatClient:
         self._worlds_dirty = False
         # ocupacao de instancia muda rapido: cache curto, so em memoria
         self._instances = {}   # "wrld_x:123" -> (ts, (occupants, capacity))
+        # `requests.Session` NAO e thread-safe: refresh, perfil e 2FA rodam em
+        # threads diferentes e compartilham o mesmo pool. Uma requisicao por vez.
+        self._lock = threading.RLock()
+        # ultimo estado de sessao gravado em disco (para nao regravar a cada ciclo)
+        self._persisted = None
 
     # -- infra
     def _params(self, extra=None):
@@ -36,17 +68,45 @@ class VRChatClient:
             p.update(extra)
         return p
 
-    def _request(self, method, path, **kwargs):
-        kwargs.setdefault("timeout", 20)
+    def _request(self, method, path, tentativas=TENTATIVAS, **kwargs):
+        """Requisicao com duas defesas que faltavam:
+
+        1. Conexao morta (PC dormiu, servidor fechou o keep-alive): `requests`
+           levanta ConnectionError/Timeout, o pool e descartado e a requisicao
+           e repetida numa conexao nova. Era exatamente isto que fazia o
+           "atualizar duas vezes para dar certo".
+        2. 429: espera curta e tenta de novo; na ultima tentativa devolve a
+           resposta, para a UI poder dizer que foi limite de requisicoes.
+        """
+        kwargs.setdefault("timeout", (5, 20))   # (conectar, ler)
         resp = None
-        for _attempt in range(3):
-            resp = self.session.request(method, API + path, **kwargs)
-            if resp.status_code == 429:
-                wait = int(resp.headers.get("X-RateLimit-Reset") or 5)
-                time.sleep(max(2, min(wait, 20)))
+        for n in range(max(1, tentativas)):
+            try:
+                with self._lock:
+                    resp = self.session.request(method, API + path, **kwargs)
+            except (requests.ConnectionError, requests.Timeout):
+                self._recycle_session()
+                if n + 1 >= tentativas:
+                    raise
+                time.sleep(ESPERA_RECONEXAO * (n + 1))
+                continue
+            if resp.status_code == 429 and n + 1 < tentativas:
+                time.sleep(espera_limite(resp))
                 continue
             return resp
         return resp
+
+    def _recycle_session(self):
+        """Troca o pool de conexoes por um novo, mantendo cookies e cabecalhos."""
+        antiga = self.session
+        nova = requests.Session()
+        nova.headers.update(dict(antiga.headers))
+        nova.cookies.update(antiga.cookies)
+        self.session = nova
+        try:
+            antiga.close()
+        except Exception:  # noqa: BLE001
+            pass
 
     def load_config(self):
         try:
@@ -64,20 +124,40 @@ class VRChatClient:
         self.session.cookies.update(data["cookies"])
         if data.get("api_key"):
             self.api_key = data["api_key"]
+        self._persisted = {
+            "cookies": data.get("cookies") or {},
+            "api_key": data.get("api_key"),
+        }
         try:
             me = self.current_user()
         except Exception:
             return False
         return bool(me)
 
+    def _session_data(self):
+        return {
+            "cookies": requests.utils.dict_from_cookiejar(self.session.cookies),
+            "api_key": self.api_key,
+        }
+
     def persist_session(self):
-        save_json(
-            SESSION_FILE,
-            {
-                "cookies": requests.utils.dict_from_cookiejar(self.session.cookies),
-                "api_key": self.api_key,
-            },
-        )
+        dados = self._session_data()
+        self._persisted = dados
+        return save_json(SESSION_FILE, dados)
+
+    def persist_session_if_changed(self):
+        """Grava o cookie quando o VRChat girar a sessao.
+
+        Sem isto o `session.json` ficava com o cookie do login para sempre; depois
+        de um bom tempo parado o app voltava pedindo login (ou falhava a primeira
+        atualizacao) mesmo com a sessao viva no servidor.
+        """
+        if not self.session.cookies:
+            # sem cookie nao ha sessao para guardar — e nunca sobrescreve a boa
+            return False
+        if self._session_data() == self._persisted:
+            return False
+        return self.persist_session()
 
     def login(self, username, password):
         """Retorna (ok, precisa_2fa, mensagem)."""
@@ -178,6 +258,8 @@ class VRChatClient:
             if len(batch) < page or offset > 1000:
                 break
             offset += page
+        # cada atualizacao bem-sucedida confere se o cookie mudou e grava
+        self.persist_session_if_changed()
         return friends
 
     def get_user(self, user_id):
@@ -253,7 +335,8 @@ class VRChatClient:
         if status is not None:
             corpo["status"] = status
         if status_description is not None:
-            corpo["statusDescription"] = status_description
+            # 33 caracteres vira HTTP 400 na API: corta aqui, que e o ponto unico
+            corpo["statusDescription"] = status_description.strip()[:STATUS_DESCRIPTION_MAX]
         if not corpo:
             return self.me
         resp = self._request("PUT", f"/users/{uid}", params=self._params(), json=corpo)

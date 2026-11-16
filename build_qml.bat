@@ -1,5 +1,5 @@
 @echo off
-rem Build do executavel QML (v1.0). Fecha o app antes: o PyInstaller nao consegue
+rem Build do executavel QML (v1.1). Fecha o app antes: o PyInstaller nao consegue
 rem sobrescrever arquivo em uso (_internal\*.pyd travado = PermissionError).
 cd /d "%~dp0"
 

@@ -1,5 +1,6 @@
 """Traducao de dados da API para texto de tela. Sem Tk, sem QML."""
 
+import time
 from datetime import datetime, timezone
 
 # rotulos de status sao os oficiais do VRChat (nao traduzir)
@@ -13,6 +14,10 @@ STATUS_LABELS = {
 
 # ordem da lista: quem chama primeiro
 STATUS_ORDER = {"join me": 0, "ask me": 1, "active": 2, "busy": 3}
+
+# a API recusa statusDescription maior que isto (HTTP 400). O corte e feito no
+# cliente e no QML: limitar so na tela deixaria passar texto colado.
+STATUS_DESCRIPTION_MAX = 32
 
 PLATFORM_LABELS = {
     "standalonewindows": "PC",
@@ -121,6 +126,19 @@ def hint_for(method):
     return {"totp": HINT_TOTP, "otp": HINT_OTP}.get(method, HINT_EMAIL)
 
 
+def _delta_legivel(segundos):
+    """Segundos -> 'agora' / '12 min' / '3 h' / '2 d'."""
+    if segundos < 90:
+        return "agora"
+    minutos = segundos / 60
+    if minutos < 60:
+        return f"{int(minutos)} min"
+    horas = minutos / 60
+    if horas < 24:
+        return f"{int(horas)} h"
+    return f"{int(horas / 24)} d"
+
+
 def humanize_delta(iso_ts):
     """'ha 12 min' a partir de um timestamp ISO da API."""
     if not iso_ts:
@@ -130,15 +148,19 @@ def humanize_delta(iso_ts):
     except Exception:
         return ""
     delta = (datetime.now(timezone.utc) - ts).total_seconds()
-    if delta < 90:
-        return "agora"
-    minutes = delta / 60
-    if minutes < 60:
-        return f"{int(minutes)} min"
-    hours = minutes / 60
-    if hours < 24:
-        return f"{int(hours)} h"
-    return f"{int(hours / 24)} d"
+    return _delta_legivel(delta)
+
+
+def humanize_epoch(ts, agora=None):
+    """Mesmo texto do humanize_delta, mas a partir de um epoch (favoritos guardam assim)."""
+    if not ts:
+        return ""
+    try:
+        ts = float(ts)
+    except (TypeError, ValueError):
+        return ""
+    agora = time.time() if agora is None else float(agora)
+    return _delta_legivel(max(0.0, agora - ts))
 
 
 # "offline" aqui NAO quer dizer desconectado: a lista so mostra quem esta online.
@@ -199,14 +221,24 @@ def describe_location(location, platform=""):
     world_id, _, instance = location.partition(":")
     tags = []
     low = instance.lower()
+    # Tabela oficial (vrchat.community, guia de instâncias):
+    #   ~hidden(<id>)  -> Friends+      ~friends(<id>) -> Friends
+    #   ~private(<id>) -> Invite        + canRequestInvite -> Invite+
+    #   ~group(<id>)   -> Group         (+ groupAccessType public/plus/members)
+    # Os dois primeiros estavam TROCADOS aqui: quem estava numa instância Friends+
+    # (que traz ~hidden) aparecia como "amigos".
     if "~private(" in low or "~private" == low:
         tags.append("privado")
-    elif "~friends(" in low:
-        tags.append("amigos+")
     elif "~hidden(" in low:
-        tags.append("amigos")
+        tags.append("amigos+")   # Friends+ = amigos de amigos podem entrar
+    elif "~friends(" in low:
+        tags.append("amigos")    # Friends = só amigos
     elif "~group(" in low:
         tags.append("grupo")
+    else:
+        # sem marcador = instância pública. Antes, quando havia região, o rótulo
+        # saía só "US" e o "público" sumia da lista.
+        tags.append("público")
     if "canrequestinvite" in low:
         tags.append("convite")
     for region in ("us", "eu", "jp"):

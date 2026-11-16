@@ -10,8 +10,17 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import core.vrchat as vrc_mod  # noqa: E402
 from core.service import VRChatService  # noqa: E402
 from core.vrchat import VRChatClient  # noqa: E402
+
+# este teste usa sessão FALSA: nada pode encostar no session.json/worlds.json reais
+import tempfile  # noqa: E402
+
+_TMP = tempfile.mkdtemp(prefix="vrc_teste_")
+vrc_mod.SESSION_FILE = os.path.join(_TMP, "session.json")
+vrc_mod.WORLD_CACHE = os.path.join(_TMP, "worlds.json")
+vrc_mod.AVATARS_DIR = os.path.join(_TMP, "avatars")
 
 FRIENDS = [
     # mesma instância pública, dois amigos
@@ -136,6 +145,17 @@ def main():
     d = ana.as_dict()
     check("as_dict leva ocupação", d.get("occupants") == 17 and d.get("occupants_label") == "17/32",
           str(d.get("occupants_label")))
+
+    # bolinha vazada: quem está só na web vem marcado no dict (o QML só desenha)
+    from core import Friend as F
+
+    check("as_dict marca quem está só na web",
+          F(id="u", name="U", platform="web").as_dict().get("web") is True)
+    check("as_dict não marca quem abriu o cliente",
+          F(id="u", name="U", platform="standalonewindows").as_dict().get("web") is False)
+    check("as_dict não marca plataforma vazia nem favorito offline",
+          F(id="u", name="U").as_dict().get("web") is False
+          and F(id="u", name="U", status="offline").as_dict().get("web") is False)
 
     print(f"\n{len(amigos)} amigos, {len(sess.urls)} requisições")
     return 1 if falhas else 0

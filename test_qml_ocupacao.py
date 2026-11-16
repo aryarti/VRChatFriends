@@ -49,9 +49,9 @@ def main(segundos=45):
     bridge._friends = AMIGOS
     bridge._count_text = "5 amigos online"
     bridge._state = "list"
-    bridge._meta = "atualizado 21:44"
+    bridge._meta = "aryaah · atualizado 21:44"
     bridge._logged_in = True
-    bridge._title = APP_NAME
+    bridge._title = APP_NAME + " — aryaah"
 
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("bridge", bridge)

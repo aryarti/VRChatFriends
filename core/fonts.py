@@ -1,6 +1,6 @@
 """Familia Inter embarcada: onde estao os arquivos e como as UIs a chamam.
 
-Aqui NAO se importa toolkit nenhum — so se lista o que existe em assets/fonts.
+Aqui NAO se importa tkinter nem Qt — so se lista o que existe em assets/fonts.
 Quem carrega e cada UI (GDI privado no Tk, QFontDatabase no Qt).
 """
 

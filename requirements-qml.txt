@@ -1,0 +1,3 @@
+# UI QML (opcional): PySide6-Essentials basta — QtQuick/QML vem incluso.
+# NÃO usar o pacote "PySide6" completo: arrasta WebEngine/PDF sem uso (~180 MB).
+PySide6-Essentials>=6.9

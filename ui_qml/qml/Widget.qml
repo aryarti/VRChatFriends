@@ -14,15 +14,20 @@ Window {
     flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
     title: "VRChat Friends"
 
-    // nomes dos primeiros amigos, o resto vira "+N"
+    // nomes dos primeiros amigos ONLINE, o resto vira "+N" (favorito offline não conta)
     function nomes() {
         var f = bridge.friends;
-        if (!f || f.length === 0)
+        var online = [];
+        for (var i = 0; i < f.length; i++) {
+            if (!f[i].offline)
+                online.push(f[i]);
+        }
+        if (online.length === 0)
             return "ninguém online";
         var lista = [];
-        for (var i = 0; i < Math.min(2, f.length); i++)
-            lista.push(f[i].name);
-        var resto = f.length - lista.length;
+        for (var j = 0; j < Math.min(2, online.length); j++)
+            lista.push(online[j].name);
+        var resto = online.length - lista.length;
         return lista.join(" · ") + (resto > 0 ? "  +" + resto : "");
     }
 
@@ -33,6 +38,37 @@ Window {
         color: Qt.rgba(0.08, 0.09, 0.11, 0.94)
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.10)
+
+        // arrastar em qualquer ponto; clique curto abre a janela principal.
+        // Fica ABAIXO da coluna de propósito: um MouseArea cobrindo o cartao
+        // inteiro engolia o X e o botao de atualizar (defeito visto em 16/11).
+        // Por baixo, os botoes recebem o clique primeiro e o resto do cartao
+        // continua arrastavel.
+        MouseArea {
+            id: area
+            anchors.fill: parent
+            property point inicio
+            property bool arrastou: false
+            onPressed: function (mouse) {
+                inicio = Qt.point(mouse.x, mouse.y);
+                arrastou = false;
+            }
+            onPositionChanged: function (mouse) {
+                if (!pressed || arrastou)
+                    return;
+                if (Math.abs(mouse.x - inicio.x) > 4 || Math.abs(mouse.y - inicio.y) > 4) {
+                    arrastou = true;
+                    w.startSystemMove();
+                }
+            }
+            onReleased: {
+                if (!arrastou) {
+                    bridge.requestShow();
+                } else {
+                    bridge.salvarWidgetPos(w.x, w.y);
+                }
+            }
+        }
 
         Column {
             anchors.fill: parent
@@ -72,6 +108,7 @@ Window {
 
                 IconButton {
                     id: btGirar
+                    objectName: "btGirar"
                     anchors.right: btFechar.left
                     anchors.rightMargin: 2
                     anchors.verticalCenter: parent.verticalCenter
@@ -100,6 +137,7 @@ Window {
 
                 IconButton {
                     id: btFechar
+                    objectName: "btFechar"
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     implicitWidth: 22
@@ -128,33 +166,6 @@ Window {
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fsXs
                 elide: Text.ElideRight
-            }
-        }
-
-        // arrastar em qualquer ponto; clique curto abre a janela principal
-        MouseArea {
-            id: area
-            anchors.fill: parent
-            property point inicio
-            property bool arrastou: false
-            onPressed: function (mouse) {
-                inicio = Qt.point(mouse.x, mouse.y);
-                arrastou = false;
-            }
-            onPositionChanged: function (mouse) {
-                if (!pressed || arrastou)
-                    return;
-                if (Math.abs(mouse.x - inicio.x) > 4 || Math.abs(mouse.y - inicio.y) > 4) {
-                    arrastou = true;
-                    w.startSystemMove();
-                }
-            }
-            onReleased: {
-                if (!arrastou) {
-                    bridge.requestShow();
-                } else {
-                    bridge.salvarWidgetPos(w.x, w.y);
-                }
             }
         }
     }

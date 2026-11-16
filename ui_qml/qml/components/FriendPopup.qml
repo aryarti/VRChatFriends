@@ -10,6 +10,11 @@ Item {
     property bool opened: false
     property var perfil: ({})
     property string titulo: ""
+    // favorito: reavaliado a cada estrela (favoritosVersion força a dependência)
+    property bool favorito: {
+        bridge.favoritosVersion;
+        return bridge.isFavorito(pop.perfil.id || "");
+    }
 
     anchors.fill: parent
     visible: opacity > 0
@@ -120,10 +125,15 @@ Item {
                     RowLayout {
                         spacing: Theme.s2
                         Rectangle {
+                            objectName: "statusDotPerfil"
                             Layout.preferredWidth: Theme.dotSize
                             Layout.preferredHeight: Theme.dotSize
                             radius: width / 2
-                            color: Theme.statusColor(pop.perfil.status || "active")
+                            // vazada quando o amigo está só na web (igual à linha)
+                            color: pop.perfil.web ? "transparent"
+                                                  : Theme.statusColor(pop.perfil.status || "active")
+                            border.width: pop.perfil.web ? Theme.dotWebRing : 0
+                            border.color: Theme.statusColor(pop.perfil.status || "active")
                         }
                         Text {
                             text: pop.perfil.status_label || ""
@@ -141,6 +151,28 @@ Item {
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fsXs
                         elide: Text.ElideRight
+                    }
+                }
+
+                // estrela de favorito: mesma ação da linha (grava no settings.json)
+                Text {
+                    id: estrelaPerfil
+                    objectName: "estrelaPerfil"
+                    Layout.alignment: Qt.AlignTop | Qt.AlignRight
+                    text: pop.favorito ? "★" : "☆"
+                    color: pop.favorito ? Theme.starOn : Theme.starOff
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.starSize + 6
+                    Behavior on color { ColorAnimation { duration: Theme.durFast } }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -8
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (pop.perfil.id)
+                                bridge.toggleFavorito(pop.perfil.id);
+                        }
                     }
                 }
             }

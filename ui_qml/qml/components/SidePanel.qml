@@ -67,6 +67,25 @@ Item {
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fsSm
         }
+
+        // status atual, embaixo do ícone: a cor é a do status escolhido no VRChat
+        // (verde = Online, azul = Join Me, âmbar = Ask Me, vermelho = Busy)
+        Rectangle {
+            id: bolinhaStatus
+            objectName: "bolinhaStatus"
+            width: Theme.statusDotSize
+            height: Theme.statusDotSize
+            radius: width / 2
+            color: Theme.statusColor(panel.perfil.status || "active")
+            border.width: Theme.statusDotRing
+            border.color: Theme.bg0
+            visible: !panel.expanded
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: -Theme.s1 / 2
+            Behavior on color { ColorAnimation { duration: Theme.durFast } }
+        }
+
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
@@ -227,7 +246,27 @@ Item {
                     border.width: 1
                     border.color: bioEdit.activeFocus ? Theme.accent : Theme.border
                 }
-                onTextChanged: panel.bioSujo = (text !== (panel.perfil.status_description || ""))
+                // 32 caracteres é o teto da API; TextArea não tem maximumLength,
+                // então o corte é aqui (o cliente também corta antes do PUT)
+                onTextChanged: {
+                    if (text.length > bridge.statusMaxLength) {
+                        var pos = cursorPosition;
+                        text = text.substring(0, bridge.statusMaxLength);
+                        cursorPosition = Math.min(pos, bridge.statusMaxLength);
+                    }
+                    panel.bioSujo = (text !== (panel.perfil.status_description || ""));
+                }
+            }
+
+            // contador do limite: fica vermelho quando encosta no teto
+            Text {
+                objectName: "bioContador"
+                width: parent.width
+                horizontalAlignment: Text.AlignRight
+                text: bioEdit.text.length + "/" + bridge.statusMaxLength
+                color: bioEdit.text.length >= bridge.statusMaxLength ? Theme.statusBusy : Theme.text3
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fsXs
             }
 
             Row {

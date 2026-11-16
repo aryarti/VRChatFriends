@@ -247,7 +247,9 @@ Window {
             }
         }
 
-        // cabeçalho das colunas (fica de pé também no vazio/erro)
+        // cabeçalho das colunas (fica de pé também no vazio/erro).
+        // Os três títulos ordenam: 1º clique crescente, 2º decrescente. A seta
+        // ▲/▼ mora só na coluna ativa — a regra de ordem é do core/sorting.py.
         Item {
             id: colHead
             anchors.top: header.bottom
@@ -255,30 +257,130 @@ Window {
             anchors.right: parent.right
             height: Theme.headHeight
 
-            Text {
-                x: Theme.listPad + Theme.avatarSize + Theme.s3
-                anchors.verticalCenter: parent.verticalCenter
-                text: "AMIGO"
-                color: Theme.text3
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fsXs
+            // ---- AMIGO (nome A->Z / Z->A)
+            Item {
+                id: headAmigo
+                objectName: "headAmigo"
+                width: Theme.colStatus
+                height: parent.height
+
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: Theme.listPad + Theme.avatarSize + Theme.s3
+                    spacing: Theme.s1
+
+                    Text {
+                        text: "AMIGO"
+                        color: bridge.sortColumn === "name" ? Theme.headerActive
+                               : (mouseAmigo.containsMouse ? Theme.headerHover : Theme.text3)
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsXs
+                        Behavior on color { ColorAnimation { duration: Theme.durFast } }
+                    }
+                    Text {
+                        objectName: "setaAmigo"
+                        visible: bridge.sortColumn === "name"
+                        text: bridge.sortDirection === "asc" ? "▲" : "▼"
+                        color: Theme.accent
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsXs
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+                MouseArea {
+                    id: mouseAmigo
+                    objectName: "cliqueAmigo"
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: bridge.setSort("name")
+                }
             }
-            Text {
-                x: Theme.colStatus + Theme.dotSize + Theme.s2
-                anchors.verticalCenter: parent.verticalCenter
-                text: "STATUS"
-                color: Theme.text3
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fsXs
+
+            // ---- STATUS (Join Me, Online, Ask Me, Busy; desconhecido no fim)
+            Item {
+                id: headStatus
+                objectName: "headStatus"
+                x: Theme.colStatus
+                width: Theme.colWorld - Theme.colStatus
+                height: parent.height
+
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: Theme.dotSize + Theme.s2
+                    spacing: Theme.s1
+
+                    Text {
+                        text: "STATUS"
+                        color: bridge.sortColumn === "status" ? Theme.headerActive
+                               : (mouseStatus.containsMouse ? Theme.headerHover : Theme.text3)
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsXs
+                        Behavior on color { ColorAnimation { duration: Theme.durFast } }
+                    }
+                    Text {
+                        objectName: "setaStatus"
+                        visible: bridge.sortColumn === "status"
+                        text: bridge.sortDirection === "asc" ? "▲" : "▼"
+                        color: Theme.accent
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsXs
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+                MouseArea {
+                    id: mouseStatus
+                    objectName: "cliqueStatus"
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: bridge.setSort("status")
+                }
             }
-            Text {
+
+            // ---- MUNDO (público, grupo, amigos/convite, privado, fora de mundo)
+            Item {
+                id: headMundo
+                objectName: "headMundo"
                 x: Theme.colWorld
-                anchors.verticalCenter: parent.verticalCenter
-                text: "MUNDO"
-                color: Theme.text3
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fsXs
+                width: parent.width - Theme.colWorld
+                height: parent.height
+
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    spacing: Theme.s1
+
+                    Text {
+                        text: "MUNDO"
+                        color: bridge.sortColumn === "world" ? Theme.headerActive
+                               : (mouseMundo.containsMouse ? Theme.headerHover : Theme.text3)
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsXs
+                        Behavior on color { ColorAnimation { duration: Theme.durFast } }
+                    }
+                    Text {
+                        objectName: "setaMundo"
+                        visible: bridge.sortColumn === "world"
+                        text: bridge.sortDirection === "asc" ? "▲" : "▼"
+                        color: Theme.accent
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fsXs
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+                MouseArea {
+                    id: mouseMundo
+                    objectName: "cliqueMundo"
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: bridge.setSort("world")
+                }
             }
+
             Rectangle {
                 anchors.bottom: parent.bottom
                 width: parent.width
@@ -289,6 +391,7 @@ Window {
 
         ListView {
             id: list
+            objectName: "lista"
             anchors.top: colHead.bottom
             anchors.left: parent.left
             anchors.right: parent.right
@@ -297,6 +400,38 @@ Window {
             model: bridge.friends
             boundsBehavior: Flickable.StopAtBounds
             currentIndex: -1
+            // a seleção é guardada por ID: reordenar (clique no cabeçalho) ou
+            // atualizar a lista não pode jogar a marca em outra pessoa
+            property string selecionadoId: ""
+
+            function selecionar(id) {
+                selecionadoId = id || "";
+                restauraSel();
+            }
+
+            function restauraSel() {
+                if (!selecionadoId) {
+                    currentIndex = -1;
+                    return;
+                }
+                var lista = bridge.friends;
+                for (var i = 0; i < lista.length; i++) {
+                    if (lista[i].id === selecionadoId) {
+                        currentIndex = i;
+                        return;
+                    }
+                }
+                selecionadoId = "";   // o amigo saiu da lista (ficou offline)
+                currentIndex = -1;
+            }
+
+            // depois que o modelo é trocado (Qt.callLater: o ListView termina de
+            // atualizar antes de nós mexermos no currentIndex)
+            Connections {
+                target: bridge
+                function onFriendsChanged() { Qt.callLater(list.restauraSel); }
+            }
+
             ScrollBar.vertical: ScrollBar {
                 policy: ScrollBar.AsNeeded
                 width: 8
@@ -357,16 +492,17 @@ Window {
                 }
 
                 onClicked: {
-                    list.currentIndex = index;
+                    list.selecionar(modelData.id);
                     popup.perfil = ({});
                     popup.titulo = modelData.name;
                     popup.open();
                     bridge.requestProfile(modelData.id);
                 }
                 onRightClicked: {
-                    list.currentIndex = index;
+                    list.selecionar(modelData.id);
                     ctxMenu.popup();
                 }
+                onStarClicked: bridge.toggleFavorito(modelData.id)
             }
         }
 
@@ -396,7 +532,14 @@ Window {
             }
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: bridge.state === "error" ? "Nova tentativa em 45 s" : "A lista se atualiza a cada 45 s"
+                width: Math.min(implicitWidth, listPane.width - Theme.s6)
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                // o motivo real da falha vem do bridge (antes só dizia "falha")
+                text: bridge.state === "error"
+                      ? (bridge.lastError ? bridge.lastError + " · " : "")
+                        + "nova tentativa em " + bridge.retrySeconds + " s"
+                      : "A lista se atualiza a cada " + bridge.refreshSeconds + " s"
                 color: Theme.text2
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fsSm
@@ -467,6 +610,19 @@ Window {
             }
             function onMyProfileReady(json) {
                 try { myPanel.perfil = JSON.parse(json); } catch (e) { myPanel.perfil = ({}); }
+            }
+            // aviso clicado: o bridge já pediu pra trazer a janela; aqui abre o cartão
+            function onAbrirAmigo(id) {
+                for (var i = 0; i < bridge.friends.length; i++) {
+                    if (bridge.friends[i].id === id) {
+                        list.selecionar(id);
+                        popup.perfil = ({});
+                        popup.titulo = bridge.friends[i].name;
+                        popup.open();
+                        bridge.requestProfile(id);
+                        return;
+                    }
+                }
             }
         }
 

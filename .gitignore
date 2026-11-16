@@ -18,3 +18,7 @@ preview/
 docs/*.tmp
 .DS_Store
 Thumbs.db
+
+# material de design/referencia: fora do repositorio (tem print com amigos reais)
+layout/
+layout-v2/

@@ -14,7 +14,7 @@ from core.vrchat import VRChatClient  # noqa: E402
 
 ME = {
     "id": "usr_eu",
-    "displayName": "eu",
+    "displayName": "aryaah",
     "status": "active",
     "statusDescription": "bio antiga",
     "bio": "",
@@ -47,15 +47,17 @@ class SessaoFalsa:
 
     def __init__(self):
         self.chamadas = []
+        self.atual = dict(ME)   # estado do "servidor": o PUT muda e o GET enxerga
 
     def request(self, method, url, **kwargs):
         self.chamadas.append((method, url, kwargs.get("json")))
         if method == "PUT" and "/users/usr_eu" in url:
-            corpo = dict(ME)
+            corpo = dict(self.atual)
             corpo.update(kwargs.get("json") or {})
+            self.atual = corpo
             return Resp(200, corpo)
         if "/users/usr_eu" in url:
-            return Resp(200, ME)
+            return Resp(200, self.atual)
         return Resp(404, {})
 
 
@@ -94,7 +96,7 @@ def main():
     # 4) serviço devolve perfil pronto
     service = VRChatService(client=cliente)
     perfil = service.update_me(status="ask me")
-    check("serviço devolve Profile", getattr(perfil, "name", "") == "eu", getattr(perfil, "name", "?"))
+    check("serviço devolve Profile", getattr(perfil, "name", "") == "aryaah", getattr(perfil, "name", "?"))
     check("status no perfil", getattr(perfil, "status", "") == "ask me", getattr(perfil, "status", "?"))
 
     print(f"\n{len(sess.chamadas)} requisições, {falhas} falha(s)")

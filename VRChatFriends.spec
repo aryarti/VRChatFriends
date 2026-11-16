@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller — VRChat Friends v1.0 (interface QML).
+"""PyInstaller — VRChat Friends v1.1 (interface QML).
 
 Um diretório (não onefile): abre rápido, o antivírus reclama menos e dá para
 substituir um arquivo só quando preciso. Tudo que o app lê em tempo de execução
@@ -76,7 +76,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=os.path.join(RAIZ, "assets", "icon.ico"),
-    version=os.path.join(RAIZ, "versao_v1.0.txt"),
+    version=os.path.join(RAIZ, "versao_exe.txt"),
 )
 
 coll = COLLECT(

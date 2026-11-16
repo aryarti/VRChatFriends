@@ -44,7 +44,7 @@ print(("OK   " if resolvida == "Inter 18pt" else "FALHA") + f"  familia Inter no
 bridge = qm.Bridge()
 # dados falsos direto no estado do bridge (sem tocar em rede)
 bridge._logged_in = True
-bridge._user_name = "eu"
+bridge._user_name = "aryaah"
 bridge._count_text = "2 amigos online"
 bridge._state = "list"
 bridge._friends = [

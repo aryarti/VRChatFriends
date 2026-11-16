@@ -1,3 +1,5 @@
-PySide6-Essentials>=6.6
+# core + UI Tkinter (CustomTkinter)
 requests>=2.31
+pystray>=0.19
 pillow>=10.0
+customtkinter>=5.2

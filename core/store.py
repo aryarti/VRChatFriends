@@ -38,6 +38,27 @@ def save_settings(settings):
     return save_json(SETTINGS_FILE, settings)
 
 
+def merge_settings(changes, drop=(), carregar=None, gravar=None):
+    """Grava `changes` por cima do que ja esta no arquivo e devolve o resultado.
+
+    Duas copias do app abertas gravavam o settings inteiro a partir da propria
+    memoria: a janela que estava com a lista velha de favoritos apagava a
+    estrela salva pela outra (visto em 16/11). Mesclando no arquivo, cada
+    escrita responde so pelas chaves que ela realmente mudou.
+
+    `carregar`/`gravar` existem para os testes apontarem para um arquivo
+    temporario sem mexer no settings do dono.
+    """
+    carregar = carregar or load_settings
+    gravar = gravar or save_settings
+    atual = carregar()
+    atual.update(changes or {})
+    for chave in drop or ():
+        atual.pop(chave, None)
+    gravar(atual)
+    return atual
+
+
 def attach_logging():
     """Com pythonw.exe nao existe console: joga stdout/stderr num arquivo.
 
