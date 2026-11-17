@@ -2,6 +2,30 @@
 
 App leve para ver **quais amigos estão online no VRChat**, sem manter o site aberto no navegador.
 
+## Prints
+
+Todos os prints usam **dados fictícios**: o `screenshots.py` monta a lista com nomes inventados e os avatares são desenhados pelo próprio script — nenhum amigo real ou foto de pessoa aparece.
+
+**Lista** — favoritos no topo, e um favorito *offline* no fim com "visto há 2 h":
+
+![Lista de amigos, com um favorito offline no fim](docs/showcase-lista.png)
+
+**Perfil do amigo** — abre ao clicar na linha:
+
+![Perfil de um amigo, com status, confiança e idiomas](docs/showcase-perfil.png)
+
+**Meu perfil** — painel do topo, com o status editável:
+
+![Painel do meu perfil, aberto](docs/showcase-painel.png)
+
+**Widget** — lista compacta com o botão de atualizar e o ✕ de fechar:
+
+<img src="docs/showcase-widget.png" width="268" alt="Widget com a lista de amigos">
+
+**Avisos de amigo entrou** — o favorito em destaque, os demais em cinza:
+
+<img src="docs/showcase-aviso.png" width="360" alt="Avisos de amigo entrou">
+
 ## Como abrir
 
 - Atalho **VRChat Friends** na Área de Trabalho, ou
