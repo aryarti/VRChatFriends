@@ -289,6 +289,19 @@ def main(modo="lista", segundos=40):
 
             QTimer.singleShot(1400, medir)
 
+    # nos modos que não têm janela própria (lista, popup, painel) o print é a
+    # própria janela principal — gravada aqui para o script se bastar
+    if modo in ("lista", "popup", "painel"):
+        atraso = 2200 if modo == "lista" else 3300
+
+        def salvar_janela():
+            img = janela.grabWindow()
+            destino = os.path.join(AVATARES, modo + ".png")
+            img.save(destino)
+            print(f"print ({modo}) salvo em", destino)
+
+        QTimer.singleShot(atraso, salvar_janela)
+
     QTimer.singleShot(segundos * 1000, app.quit)
     return app.exec()
 
