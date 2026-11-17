@@ -2,9 +2,8 @@
 
 App leve para ver **quais amigos estão online no VRChat**, sem manter o site aberto no navegador.
 
-## Prints
-
-Todos os prints usam **dados fictícios**: o `screenshots.py` monta a lista com nomes inventados e os avatares são desenhados pelo próprio script — nenhum amigo real ou foto de pessoa aparece.
+## Imagens
+*(dados meramente ilustrativos)*
 
 **Lista** — favoritos no topo, e um favorito *offline* no fim com "visto há 2 h":
 
