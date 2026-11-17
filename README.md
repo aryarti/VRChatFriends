@@ -25,6 +25,9 @@ App leve para ver **quais amigos estão online no VRChat**, sem manter o site ab
 
 <img src="docs/showcase-aviso.png" width="360" alt="Avisos de amigo entrou">
 
+## Como Instalar
+- Acesse a versão mais recente no releases do repositório, baixe e rode o executável
+
 ## Como abrir
 
 - Atalho **VRChat Friends** na Área de Trabalho, ou
